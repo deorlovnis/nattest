@@ -8,21 +8,26 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// type Reading struct {
-// 	ID        int
-// 	TimeStamp int
-// 	Temp      float32
-// 	isOpen    bool
-// }
+type Reading struct {
+	Id        primitive.ObjectID  `bson:"_id" json:"_id"`
+	TimeStamp primitive.Timestamp `bson:"time"`
+	Temp      float32             `bson:"temperature"`
+	isOpen    bool                `bson:"isOpen"`
+}
 
-// func makeReading() {
+func makeReading(books *mongo.Collection, Ctx context.Context) {
+	r := Reading{Id: primitive.NewObjectID(), Temp: 36.6, isOpen: false}
 
-// }
+	_, err := books.InsertOne(Ctx, r)
+	if err != nil {
+		return
+	}
+}
 
 func prepEnv() {
 	err := godotenv.Load()
@@ -49,9 +54,8 @@ func main() {
 	}
 	defer client.Disconnect(ctx)
 
-	databases, err := client.ListDatabaseNames(ctx, bson.M{})
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(databases)
+	db := client.Database("Cluster0")
+	ReadingsCollection := db.Collection("Readings")
+	makeReading(ReadingsCollection, ctx)
+
 }
