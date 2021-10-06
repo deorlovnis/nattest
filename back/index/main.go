@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -38,24 +39,47 @@ func prepEnv() {
 	}
 }
 
+func spawnReadings(wg *sync.WaitGroup) {
+	go func() {
+		mongoURI := "mongodb+srv://" + os.Getenv("MONGO_USER") + ":" + os.Getenv("MONGO_PASSWORD") + "@cluster0.zkhjg.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
+
+		fmt.Println(os.Getenv("MONGO_USER"))
+		client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
+		if err != nil {
+			log.Fatal(err)
+		}
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		err = client.Connect(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer client.Disconnect(ctx)
+
+		db := client.Database("Cluster0")
+		ReadingsCollection := db.Collection("Readings")
+
+		i := 0
+		// to avoid infinite spawning and limited it to 10 mins if you need to present it
+		for i < 600 {
+			time.Sleep(time.Second)
+			makeReading(ReadingsCollection, ctx)
+			fmt.Printf("new reading created: %v\n", i)
+			i++
+		}
+
+		fmt.Println("Spawning has been stopped for common sense reasons")
+		wg.Done()
+	}()
+}
+
 func main() {
 	prepEnv()
 
-	mongoURI := "mongodb+srv://" + os.Getenv("MONGO_USER") + ":" + os.Getenv("MONGO_PASSWORD") + "@cluster0.zkhjg.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
+	wg := new(sync.WaitGroup)
 
-	client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
-	if err != nil {
-		log.Fatal(err)
-	}
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	err = client.Connect(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer client.Disconnect(ctx)
+	wg.Add(2)
 
-	db := client.Database("Cluster0")
-	ReadingsCollection := db.Collection("Readings")
-	makeReading(ReadingsCollection, ctx)
+	go spawnReadings(wg)
 
+	wg.Wait()
 }
