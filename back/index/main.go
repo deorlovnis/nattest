@@ -47,11 +47,13 @@ func prepEnv() {
 func handleReadings(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/api/v1/readings/" {
 		http.Error(w, "404 not found.", http.StatusNotFound)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	if r.Method != "GET" {
 		http.Error(w, "Method is not supported.", http.StatusNotFound)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -59,11 +61,13 @@ func handleReadings(w http.ResponseWriter, r *http.Request) {
 
 	client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Fatal(err)
 	}
 	ctx := context.Background()
 	err = client.Connect(ctx)
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Fatal(err)
 	}
 	defer client.Disconnect(ctx)
@@ -76,12 +80,14 @@ func handleReadings(w http.ResponseWriter, r *http.Request) {
 	for b.Next(ctx) {
 		err := b.Decode(&reading)
 		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		readings = append(readings, reading)
 	}
 
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
