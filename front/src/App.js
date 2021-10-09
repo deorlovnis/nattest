@@ -1,9 +1,9 @@
-// import logo from './logo.svg';
 import {useState, useEffect} from 'react'
+import {Table} from 'semantic-ui-react'
 import './App.css';
 
 const useFetch = url => {
-  const [state, setState] = useState()
+  const [state, setState] = useState([])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -11,24 +11,43 @@ const useFetch = url => {
         .then(data => data.json())
         .then(data => setState(data))
         .catch(function(error) {
-          console.log(error)
+           console.log(error)
         })
     }, 5000)
 
     return () => clearInterval(interval);
-  }, [url])
+  }, [url, state])
 
   return state
 }
 
-function App() {
-  const state = useFetch("http://localhost:5050/api/v1/readings/")
-  
+const headerRow = ['Time', 'Door', 'Temperature']
 
-  console.log(state)
+const renderBodyRow = ({ TimeStamp, status, Temp }, i) => ({
+  key: TimeStamp || `row-${i}`,
+  warning: !!(status && status.match('Requires Action')),
+  cells: [
+    TimeStamp.T || 'No name specified',
+    status ? { key: 'status', icon: 'attention', content: status } : 'Unknown',
+    Temp
+      ? { key: 'notes', icon: 'attention', content: Temp, warning: true }
+      : 'None',
+  ],
+})
+
+
+function App() {
+  const readings = useFetch("http://localhost:5050/api/v1/readings/")
+
   return (
-    <div className="App">
+    <div >
       <header className="App-header">
+        <Table
+          celled
+          headerRow={headerRow}
+          renderBodyRow={renderBodyRow}
+          tableData={readings}
+        />
       </header>
     </div>
   );
