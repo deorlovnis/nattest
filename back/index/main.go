@@ -21,7 +21,7 @@ import (
 type Notification struct {
 	IsOpen        *bool `bson:"isOpen"`
 	IsOpenLong    *bool `bson:"isOpenLong"`
-	IsExtremeTemp *bool `bson:"isTextreme"`
+	IsExtremeTemp *bool `bson:"IsExtremeTemp"`
 }
 
 type Reading struct {
