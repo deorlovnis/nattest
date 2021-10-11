@@ -1,6 +1,6 @@
 **Server:**
 
-    If you want to test the solution DM me for credentials or
+If you want to test the solution DM me for credentials or
 create you own DB with the name "Cluser0". Create a .env file and store the credentials in ../back/.env .
 Use terminal to run the server with the command: go run *path to main.go*
 
@@ -9,5 +9,5 @@ Use terminal to run the server with the command: go run *path to main.go*
 
 **Front-end:**
 
-    Run **npm install** in ../front/ .
+Run **npm install** in ../front/ .
 Change path to ../front folder. Use terminal to run the front-end with the command: npm start. 
