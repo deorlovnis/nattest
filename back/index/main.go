@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"sync"
@@ -17,16 +18,45 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+type Notification struct {
+	IsOpen        *bool `bson:"isOpen"`
+	IsOpenLong    *bool `bson:"isOpenLong"`
+	IsExtremeTemp *bool `bson:"isTextreme"`
+}
+
 type Reading struct {
-	Id        primitive.ObjectID  `bson:"_id" json:"_id"`
-	TimeStamp primitive.Timestamp `bson:"time"`
-	Temp      float32             `bson:"temperature"`
-	isOpen    bool                `bson:"isOpen"`
+	Id            primitive.ObjectID `bson:"_id"`
+	TimeStamp     time.Time          `bson:"time"`
+	Temp          int                `bson:"temperature"`
+	*Notification `bson:"notifications"`
 }
 
 func makeReading(books *mongo.Collection, ctx context.Context) {
-	// TODO: make data random
-	r := Reading{Id: primitive.NewObjectID(), Temp: 36.6, isOpen: false}
+	minTemp := -30
+	maxTemp := 20
+	isOpen := false
+	isOpenLong := false
+	isExtremeTemp := false
+
+	temp := rand.Intn(maxTemp-minTemp) + minTemp
+	dOpenT := rand.Intn(30-1) + 1
+
+	if temp < -20 || maxTemp < 15 {
+		isExtremeTemp = true
+	}
+
+	if dOpenT > 20 {
+		isOpenLong = true
+	}
+
+	r := Reading{
+		Id:        primitive.NewObjectID(),
+		TimeStamp: time.Now(),
+		Temp:      temp,
+		Notification: &Notification{
+			IsOpen:        &isOpen,
+			IsOpenLong:    &isOpenLong,
+			IsExtremeTemp: &isExtremeTemp}}
 
 	_, err := books.InsertOne(ctx, r)
 	if err != nil {
@@ -47,29 +77,31 @@ func prepEnv() {
 func handleReadings(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/api/v1/readings/" {
 		http.Error(w, "404 not found.", http.StatusNotFound)
-		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	if r.Method != "GET" {
 		http.Error(w, "Method is not supported.", http.StatusNotFound)
-		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	mongoURI := "mongodb+srv://" + os.Getenv("MONGO_USER") + ":" + os.Getenv("MONGO_PASSWORD") + "@cluster0.zkhjg.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
 
 	client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
+
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Fatal(err)
 	}
+
 	ctx := context.Background()
 	err = client.Connect(ctx)
+
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Fatal(err)
 	}
+
 	defer client.Disconnect(ctx)
 
 	var reading Reading
@@ -92,6 +124,8 @@ func handleReadings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
 	json.NewEncoder(w).Encode(readings)
 }
 
@@ -105,23 +139,26 @@ func spawnReadings(wg *sync.WaitGroup) {
 		}
 		ctx := context.Background()
 		err = client.Connect(ctx)
+
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		defer client.Disconnect(ctx)
 
 		col := client.Database("Cluster0").Collection("Readings")
 
 		i := 0
-		// to avoid infinite spawning and limited it to 10 mins if you need to present this project
+
 		for i < 600 {
-			time.Sleep(time.Second)
+			time.Sleep(time.Second * 5)
 			makeReading(col, ctx)
 			fmt.Printf("new reading created: %v\n", i)
 			i++
 		}
 
 		fmt.Println("Spawning has been stopped for common sense reasons")
+
 		wg.Done()
 	}()
 }
@@ -141,12 +178,12 @@ func main() {
 
 	// Should've passed db connection from here avoiding duplicate code, making it configurable and faster
 	// Couldn't find a way to make it work in the reasonable time with parallel processes
-	// decided to go forth with the current solution for now
+	// decided to go forth with the current solution
 
 	// to avoid potential collision
 	wg.Add(2)
 
-	// go spawnReadings(wg)
+	go spawnReadings(wg)
 
 	go server(wg)
 
