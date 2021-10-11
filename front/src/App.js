@@ -1,7 +1,10 @@
 import {useState, useEffect} from 'react'
+import moment from 'moment'
 import {Table} from 'semantic-ui-react'
-import './App.css';
+import 'semantic-ui-css/semantic.min.css';
+import './App.css' 
 
+// handle state and every five seconds update it with external API data 
 const useFetch = url => {
   const [state, setState] = useState([])
 
@@ -9,7 +12,7 @@ const useFetch = url => {
     const interval = setInterval(() => {
       fetch(url)
         .then(data => data.json())
-        .then(data => setState(data))
+        .then(data =>  setState(data))
         .catch(function(error) {
            console.log(error)
         })
@@ -21,17 +24,21 @@ const useFetch = url => {
   return state
 }
 
+// create table columns
 const headerRow = ['Time', 'Door', 'Temperature']
 
-const renderBodyRow = ({ TimeStamp, status, Temp }, i) => ({
+// create table rows
+// this implementation contains a bug which makes all rows rendered with warninings
+// if a row data contains a warning flag
+// haven't found how to resolve it in a reasonable time
+const renderBodyRow = ({ TimeStamp, IsOpen, IsOpenLong, Temp, IsExtremeTemp }, i) => ({
   key: TimeStamp || `row-${i}`,
-  warning: !!(status && status.match('Requires Action')),
+  warning: !!(IsOpen && IsOpen.match('Requires Action')),
   cells: [
-    TimeStamp.T || 'No name specified',
-    status ? { key: 'status', icon: 'attention', content: status } : 'Unknown',
-    Temp
-      ? { key: 'notes', icon: 'attention', content: Temp, warning: true }
-      : 'None',
+    moment(TimeStamp).format('dd:h:mm:ss') || 'No time specified',
+    // this makes door notification handle two cases at once. Should be decoupled
+    !!IsOpen || IsOpenLong ? { key: 'open', icon: 'attention', content: 'open'} : "closed",
+    !!IsExtremeTemp ? {  icon: 'attention', content: Temp, warning: true } : Temp
   ],
 })
 
