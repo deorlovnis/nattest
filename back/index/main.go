@@ -31,7 +31,7 @@ type Reading struct {
 	*Notification `bson:"notifications"`
 }
 
-func makeReading(books *mongo.Collection, ctx context.Context) {
+func makeReading(readings *mongo.Collection, ctx context.Context) {
 	minTemp := -30
 	maxTemp := 20
 	isOpen := false
@@ -41,7 +41,7 @@ func makeReading(books *mongo.Collection, ctx context.Context) {
 	temp := rand.Intn(maxTemp-minTemp) + minTemp
 	dOpenT := rand.Intn(30-1) + 1
 
-	if temp < -20 || maxTemp < 15 {
+	if temp < -20 || 15 < temp {
 		isExtremeTemp = true
 	}
 
@@ -58,7 +58,7 @@ func makeReading(books *mongo.Collection, ctx context.Context) {
 			IsOpenLong:    &isOpenLong,
 			IsExtremeTemp: &isExtremeTemp}}
 
-	_, err := books.InsertOne(ctx, r)
+	_, err := readings.InsertOne(ctx, r)
 	if err != nil {
 		fmt.Println(err)
 		return
